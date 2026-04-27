@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Philippines Language Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+
+    #header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f0f6fc;
+      letter-spacing: -0.01em;
+    }
+
+    #header p {
+      font-size: 0.78rem;
+      color: #8b949e;
+      margin-top: 1px;
+    }
+
+    .header-flag {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .header-meta {
+      flex: 1;
+    }
+
+    .header-badge {
+      font-size: 0.7rem;
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #map {
+      flex: 1;
+      background: #0d1117;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 320px;
+      flex-shrink: 0;
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar: info panel ── */
+    #region-info {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    #region-info::-webkit-scrollbar { width: 4px; }
+    #region-info::-webkit-scrollbar-track { background: transparent; }
+    #region-info::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+    .placeholder {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #484f58;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .placeholder-icon {
+      font-size: 2.5rem;
+      opacity: 0.4;
+    }
+
+    .placeholder p {
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    /* ── Region card ── */
+    .region-card { display: none; }
+    .region-card.active { display: block; }
+
+    .card-region-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #8b949e;
+      margin-bottom: 4px;
+    }
+
+    .card-region-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f0f6fc;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+
+    .primary-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 6px;
+      padding: 7px 12px;
+      margin-bottom: 20px;
+      border: 1px solid transparent;
+    }
+
+    .primary-badge .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .primary-badge .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+    }
+
+    .primary-badge .value {
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #8b949e;
+      margin-bottom: 8px;
+      margin-top: 18px;
+    }
+
+    .lang-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .lang-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 11px;
+      background: #21262d;
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+
+    .lang-list li .lang-name { color: #e6edf3; }
+
+    .lang-list li .lang-note {
+      font-size: 0.7rem;
+      color: #8b949e;
+      background: #161b22;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-box {
+      background: #21262d;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .stat-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f0f6fc;
+    }
+
+    .stat-key {
+      font-size: 0.68rem;
+      color: #8b949e;
+      margin-top: 2px;
+    }
+
+    .description {
+      font-size: 0.8rem;
+      line-height: 1.65;
+      color: #c9d1d9;
+    }
+
+    /* ── Legend ── */
+    #legend {
+      padding: 16px 20px;
+      border-top: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+
+    .legend-title {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #8b949e;
+      margin-bottom: 10px;
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.75rem;
+      color: #c9d1d9;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ── Leaflet overrides ── */
+    .leaflet-container { background: #0d1117; }
+
+    .leaflet-tooltip {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .leaflet-tooltip-top::before { border-top-color: #30363d; }
+    .leaflet-tooltip-bottom::before { border-bottom-color: #30363d; }
+    .leaflet-tooltip-left::before { border-left-color: #30363d; }
+    .leaflet-tooltip-right::before { border-right-color: #30363d; }
+
+    .tt-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 2px; }
+    .tt-lang { font-size: 0.75rem; color: #8b949e; }
+
+    .leaflet-control-zoom a {
+      background: #21262d !important;
+      border-color: #30363d !important;
+      color: #e6edf3 !important;
+    }
+
+    .leaflet-control-zoom a:hover { background: #30363d !important; }
+
+    .leaflet-control-attribution {
+      background: rgba(13,17,23,0.8) !important;
+      color: #484f58 !important;
+      font-size: 0.65rem;
+    }
+
+    .leaflet-control-attribution a { color: #8b949e !important; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      #app { flex-direction: column-reverse; }
+      #sidebar { width: 100%; height: 45vh; border-left: none; border-top: 1px solid #30363d; }
+      #map { flex: 1; min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-flag">🇵🇭</div>
+  <div class="header-meta">
+    <h1>Philippines Language Map</h1>
+    <p>Linguistic diversity across 17 administrative regions</p>
+  </div>
+  <div class="header-badge">~180 living languages</div>
+</div>
+
+<div id="app">
+  <div id="map"></div>
+
+  <div id="sidebar">
+    <div id="region-info">
+      <div class="placeholder" id="placeholder">
+        <div class="placeholder-icon">🗺️</div>
+        <p>Click any region on the map to explore its languages and linguistic heritage.</p>
+      </div>
+
+      <div class="region-card" id="region-card">
+        <div class="card-region-label" id="card-code"></div>
+        <div class="card-region-name" id="card-name"></div>
+
+        <div class="primary-badge" id="card-badge">
+          <div class="dot" id="card-dot"></div>
+          <div>
+            <div class="label">Primary Language</div>
+            <div class="value" id="card-primary"></div>
+          </div>
+        </div>
+
+        <div class="section-label">Languages Spoken</div>
+        <ul class="lang-list" id="card-langs"></ul>
+
+        <div class="section-label">At a Glance</div>
+        <div class="stats-row" id="card-stats"></div>
+
+        <div class="section-label">About</div>
+        <p class="description" id="card-desc"></p>
+      </div>
+    </div>
+
+    <div id="legend">
+      <div class="legend-title">Language Families</div>
+      <div class="legend-grid" id="legend-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ─────────────────────────────────────────
+// LANGUAGE FAMILIES
+// ─────────────────────────────────────────
+const FAMILIES = {
+  tagalog:    { label: "Tagalog",              color: "#3b82f6" },
+  ilocano:    { label: "Ilocano / N. Luzon",   color: "#f59e0b" },
+  bikol:      { label: "Bikol",                color: "#a855f7" },
+  visayan:    { label: "Visayan",              color: "#22c55e" },
+  moro:       { label: "Moro / Islamicized",   color: "#ef4444" },
+  indigenous: { label: "Mindanao Indigenous",  color: "#f97316" },
+  cordillera: { label: "Cordillera",           color: "#06b6d4" },
+  creole:     { label: "Creole / Mixed",       color: "#ec4899" },
+};
+
+// ─────────────────────────────────────────
+// REGION DATA
+// ─────────────────────────────────────────
+const REGIONS = {
+  "National Capital Region": {
+    code: "NCR", family: "tagalog", primary: "Filipino / Tagalog",
+    languages: [
+      { name: "Filipino (Tagalog)", note: "official & native" },
+      { name: "English",            note: "official" },
+      { name: "Chavacano",          note: "minority" },
+    ],
+    population: "~13.5 M", langCount: "3+ major",
+    desc: "Metro Manila, the national capital, is the heartland of Tagalog. Filipino — the standardized form of Tagalog — is the national language used in government, education, and media. English is a co-official language widely used in business and law.",
+  },
+  "Cordillera Administrative Region": {
+    code: "CAR", family: "cordillera", primary: "Ibaloi / Kankanaey",
+    languages: [
+      { name: "Ibaloi",          note: "Benguet" },
+      { name: "Kankanaey",       note: "Mountain Province, Benguet" },
+      { name: "Bontoc",          note: "Mountain Province" },
+      { name: "Ifugao",          note: "Ifugao Province" },
+      { name: "Kalinga",         note: "Kalinga Province" },
+      { name: "Itneg (Tinggian)",note: "Abra" },
+      { name: "Ilocano",         note: "lingua franca" },
+    ],
+    population: "~1.8 M", langCount: "~30 languages",
+    desc: "The Cordillera highlands are among the most linguistically dense areas in the Philippines. The indigenous Igorot peoples — builders of the 2,000-year-old Banaue rice terraces — speak dozens of distinct Austronesian languages, many confined to single valleys.",
+  },
+  "Ilocos Region": {
+    code: "Region I", family: "ilocano", primary: "Ilocano",
+    languages: [
+      { name: "Ilocano",    note: "dominant" },
+      { name: "Pangasinan", note: "Pangasinan province" },
+      { name: "Bolinao",    note: "coastal Pangasinan" },
+      { name: "Sambal",     note: "Zambales" },
+    ],
+    population: "~5.3 M", langCount: "4 languages",
+    desc: "Ilocano (Ilokano) is the third most-spoken native Philippine language with roughly 8 million speakers. It serves as the lingua franca of northern Luzon and is spoken by a large diaspora in Hawaii and the western United States.",
+  },
+  "Cagayan Valley": {
+    code: "Region II", family: "ilocano", primary: "Ibanag / Ilocano",
+    languages: [
+      { name: "Ibanag",   note: "Cagayan, Isabela" },
+      { name: "Itawis",   note: "Cagayan" },
+      { name: "Gaddang",  note: "Nueva Vizcaya, Isabela" },
+      { name: "Yogad",    note: "Isabela" },
+      { name: "Isinai",   note: "Nueva Vizcaya" },
+      { name: "Atta",     note: "Cagayan, Isabela (Negrito)" },
+      { name: "Ilocano",  note: "lingua franca" },
+    ],
+    population: "~3.7 M", langCount: "~20 languages",
+    desc: "The Cagayan Valley hosts a rich cluster of Cagayan Valley languages — Ibanag, Itawis, Gaddang, and Yogad — all related but mutually unintelligible. Ilocano functions as the regional trade language. The Atta are one of the Negrito groups of Luzon.",
+  },
+  "Central Luzon": {
+    code: "Region III", family: "tagalog", primary: "Kapampangan / Tagalog",
+    languages: [
+      { name: "Kapampangan", note: "Pampanga, Tarlac" },
+      { name: "Tagalog",     note: "Bulacan, southern areas" },
+      { name: "Ilocano",     note: "Nueva Ecija, Tarlac" },
+      { name: "Pangasinan",  note: "northern fringe" },
+      { name: "Sambal",      note: "Zambales" },
+    ],
+    population: "~12.4 M", langCount: "5 languages",
+    desc: "Kapampangan (Pampango) is the language of Pampanga province and parts of Tarlac, with a rich literary tradition dating back to the 17th century. It is one of the eight major languages of the Philippines. Bulacan is predominantly Tagalog-speaking.",
+  },
+  "CALABARZON": {
+    code: "Region IV-A", family: "tagalog", primary: "Tagalog",
+    languages: [
+      { name: "Tagalog", note: "dominant" },
+      { name: "English", note: "widely used" },
+      { name: "Bikol",   note: "Quezon province fringe" },
+    ],
+    population: "~16.2 M", langCount: "2–3 languages",
+    desc: "CALABARZON is the most populous region outside Metro Manila and is solidly Tagalog-speaking. The provinces of Cavite, Laguna, Batangas, Rizal, and Quezon surround the capital and share a common Tagalog linguistic identity.",
+  },
+  "MIMAROPA": {
+    code: "Region IV-B", family: "tagalog", primary: "Tagalog / Cuyonon",
+    languages: [
+      { name: "Tagalog",           note: "Mindoro islands" },
+      { name: "Cuyonon",          note: "Palawan" },
+      { name: "Romblomanon",      note: "Romblon island" },
+      { name: "Asi (Bantoanon)",  note: "Romblon" },
+      { name: "Hanuno'o Mangyan", note: "southern Mindoro" },
+      { name: "Buhid",            note: "Mindoro indigenous" },
+      { name: "Palawano",         note: "Palawan indigenous" },
+    ],
+    population: "~3.2 M", langCount: "~20 languages",
+    desc: "MIMAROPA's island geography has produced exceptional linguistic diversity. Palawan alone hosts dozens of indigenous Palawanic languages. The Mangyan of Mindoro are notable for preserving Hanuno'o script, one of only three pre-colonial Philippine scripts still in active use.",
+  },
+  "Bicol Region": {
+    code: "Region V", family: "bikol", primary: "Central Bikol",
+    languages: [
+      { name: "Central Bikol (Naga)", note: "dominant" },
+      { name: "Albay Bikol",          note: "Albay province" },
+      { name: "N. Catanduanes Bikol",  note: "Catanduanes" },
+      { name: "Buhi'non",             note: "Camarines Sur" },
+      { name: "Rinconada Bikol",      note: "inland Camarines Sur" },
+      { name: "Masbateño",            note: "Masbate island" },
+    ],
+    population: "~6.1 M", langCount: "~10 Bikol varieties",
+    desc: "The Bikol region is home to a family of closely related but distinct languages collectively called Bikol. Central Bikol (Naga dialect) is the prestige form. Bikolanos are known for spicy cuisine and the grand Peñafrancia festival honoring Our Lady of Peñafrancia.",
+  },
+  "Western Visayas": {
+    code: "Region VI", family: "visayan", primary: "Hiligaynon (Ilonggo)",
+    languages: [
+      { name: "Hiligaynon (Ilonggo)", note: "dominant" },
+      { name: "Kinaray-a",           note: "Antique province" },
+      { name: "Capiznon",            note: "Capiz province" },
+      { name: "Aklanon",             note: "Aklan province" },
+    ],
+    population: "~7.9 M", langCount: "4 languages",
+    desc: "Hiligaynon (Ilonggo) is the lingua franca of Western Visayas and one of the most-spoken Philippine languages with ~9 million native speakers. Known for its melodic quality, it is the language of Iloilo and Bacolod. Kinaray-a, spoken in Antique, is closely related but distinct.",
+  },
+  "Central Visayas": {
+    code: "Region VII", family: "visayan", primary: "Cebuano",
+    languages: [
+      { name: "Cebuano",  note: "dominant" },
+      { name: "Boholano", note: "Bohol island" },
+      { name: "Tagalog",  note: "widely understood" },
+    ],
+    population: "~8.1 M", langCount: "2–3 languages",
+    desc: "Cebuano is the most widely spoken native language in the Philippines with ~20 million speakers. It is the language of Cebu City, the Philippines' second-largest city. Boholano, spoken on Bohol island, is a closely related dialect of Cebuano.",
+  },
+  "Eastern Visayas": {
+    code: "Region VIII", family: "visayan", primary: "Waray",
+    languages: [
+      { name: "Waray",      note: "Leyte & Samar" },
+      { name: "Cebuano",   note: "southern Leyte" },
+      { name: "Abaknon",   note: "Capul Island" },
+      { name: "Baybayanon",note: "Leyte" },
+    ],
+    population: "~4.5 M", langCount: "4 languages",
+    desc: "Waray (Waray-Waray) is spoken by the Waray people of Leyte and Samar and is the fifth most-spoken Philippine language. The region is historically significant as the site of General MacArthur's return to the Philippines at Leyte Gulf in 1944.",
+  },
+  "Zamboanga Peninsula": {
+    code: "Region IX", family: "creole", primary: "Chavacano",
+    languages: [
+      { name: "Chavacano",          note: "Spanish creole; Zamboanga City" },
+      { name: "Tausug",             note: "Sulu, Basilan" },
+      { name: "Yakan",              note: "Basilan" },
+      { name: "Subanen (Subanun)", note: "interior Mindanao" },
+      { name: "Cebuano",           note: "widely used" },
+    ],
+    population: "~3.9 M", langCount: "5+ languages",
+    desc: "Zamboanga Peninsula is home to Chavacano, the only Spanish-based creole language in Asia and one of the only creoles in the entire Asia-Pacific. It developed during 333 years of Spanish colonization. Zamboanga City is nicknamed 'Asia's Latin City.'",
+  },
+  "Northern Mindanao": {
+    code: "Region X", family: "visayan", primary: "Cebuano",
+    languages: [
+      { name: "Cebuano",        note: "dominant" },
+      { name: "Binukid",        note: "Bukidnon province" },
+      { name: "Higaonon",       note: "highland indigenous" },
+      { name: "Maranao",        note: "Lanao del Norte" },
+      { name: "Talaandig",      note: "Bukidnon" },
+      { name: "Matigsalug",     note: "Bukidnon" },
+    ],
+    population: "~5.0 M", langCount: "6+ languages",
+    desc: "Cebuano dominates urban Northern Mindanao due to centuries of Visayan migration. The highland Bukidnon plateau preserves several indigenous languages. Lanao del Norte is home to the Maranao, whose Islamic culture and art — especially the malong and okir — are iconic.",
+  },
+  "Davao Region": {
+    code: "Region XI", family: "visayan", primary: "Cebuano",
+    languages: [
+      { name: "Cebuano",       note: "dominant urban" },
+      { name: "B'laan",        note: "Sarangani, Davao del Sur" },
+      { name: "T'boli",        note: "South Cotabato, Sarangani" },
+      { name: "Bagobo (Obu-Manobo)", note: "Davao" },
+      { name: "Mandaya",       note: "Davao Oriental" },
+      { name: "Mansaka",       note: "Compostela Valley" },
+      { name: "Ata Manobo",    note: "highland areas" },
+    ],
+    population: "~5.2 M", langCount: "8+ languages",
+    desc: "Davao Region is Mindanao's economic hub. While Cebuano dominates the cities, the highlands are home to rich indigenous cultures. The T'boli are renowned for their dream-inspired t'nalak abaca cloth weaving, recognized by UNESCO. Former President Rodrigo Duterte is from Davao City.",
+  },
+  "SOCCSKSARGEN": {
+    code: "Region XII", family: "moro", primary: "Hiligaynon / Maguindanaon",
+    languages: [
+      { name: "Hiligaynon",       note: "South Cotabato, Sultan Kudarat" },
+      { name: "Maguindanaon",     note: "North Cotabato" },
+      { name: "T'boli",           note: "South Cotabato" },
+      { name: "B'laan (Blaan)",   note: "Sarangani" },
+      { name: "Cotabato Manobo",  note: "interior" },
+      { name: "Cebuano",          note: "General Santos City" },
+    ],
+    population: "~4.9 M", langCount: "6+ languages",
+    desc: "SOCCSKSARGEN spans South Cotabato, Cotabato, Sultan Kudarat, Sarangani, and General Santos City. It is a mosaic of Visayan settler communities, Maguindanaon Moro speakers, and highland indigenous peoples including the T'boli and B'laan.",
+  },
+  "Caraga": {
+    code: "Region XIII", family: "visayan", primary: "Surigaonon / Cebuano",
+    languages: [
+      { name: "Surigaonon",    note: "Surigao provinces" },
+      { name: "Agusan Manobo", note: "Agusan River valley" },
+      { name: "Mamanwa",       note: "highlands (Negrito)" },
+      { name: "Butuanon",      note: "Butuan area" },
+      { name: "Kamayo",        note: "Surigao del Sur" },
+      { name: "Cebuano",       note: "widely used" },
+    ],
+    population: "~2.8 M", langCount: "6+ languages",
+    desc: "Caraga (northeastern Mindanao) is home to the Mamanwa, a Negrito people believed to be among the earliest inhabitants of the Philippines. The Agusan River basin supports several distinct Manobo language varieties. Butuan City was the site of the oldest known boat (balangay) in Southeast Asia, dated ~320 CE.",
+  },
+  "Bangsamoro Autonomous Region in Muslim Mindanao": {
+    code: "BARMM", family: "moro", primary: "Maguindanaon / Maranao",
+    languages: [
+      { name: "Maguindanaon",  note: "Maguindanao provinces" },
+      { name: "Maranao",       note: "Lanao del Sur" },
+      { name: "Tausug",        note: "Sulu archipelago" },
+      { name: "Iranun",        note: "Maguindanao, Lanao" },
+      { name: "Yakan",         note: "Basilan" },
+      { name: "Sama-Bajau",    note: "sea peoples" },
+      { name: "Kalibugan",     note: "mixed Subanen-Tausug" },
+    ],
+    population: "~4.9 M", langCount: "7+ languages",
+    desc: "BARMM is the homeland of the Bangsamoro people and the center of Islamic culture in the Philippines. The Maranao epic Darangen is inscribed in UNESCO's Intangible Cultural Heritage list. The Sama-Bajau are legendary seafarers known for their ability to free-dive to extraordinary depths.",
+  },
+};
+
+// ─────────────────────────────────────────
+// MATCH GeoJSON FEATURE → REGION DATA
+// ─────────────────────────────────────────
+const PROP_KEYS = ["ADM1_EN","NAME_1","Reg_Name","REGION","name","NAME","region_name","LABEL","adm1_en"];
+
+const KEYWORD_MAP = [
+  [["national capital","ncr","metro manila"], "National Capital Region"],
+  [["cordillera","car ","c.a.r"],            "Cordillera Administrative Region"],
+  [["ilocos","region i ","region 1 "],        "Ilocos Region"],
+  [["cagayan valley","region ii ","region 2 "],"Cagayan Valley"],
+  [["central luzon","region iii","region 3 "],"Central Luzon"],
+  [["calabarzon","region iv-a","region iva","region 4a"], "CALABARZON"],
+  [["mimaropa","region iv-b","region ivb","region 4b"],   "MIMAROPA"],
+  [["bicol","region v ","region 5 "],          "Bicol Region"],
+  [["western visayas","region vi ","region 6 "],"Western Visayas"],
+  [["central visayas","region vii ","region 7 "],"Central Visayas"],
+  [["eastern visayas","region viii","region 8 "],"Eastern Visayas"],
+  [["zamboanga","region ix ","region 9 "],     "Zamboanga Peninsula"],
+  [["northern mindanao","region x ","region 10"],"Northern Mindanao"],
+  [["davao","region xi ","region 11"],          "Davao Region"],
+  [["soccsksargen","region xii ","region 12"],  "SOCCSKSARGEN"],
+  [["caraga","region xiii","region 13"],         "Caraga"],
+  [["bangsamoro","armm","barmm","muslim mindanao"],"Bangsamoro Autonomous Region in Muslim Mindanao"],
+];
+
+function matchRegion(props) {
+  if (!props) return null;
+  let raw = null;
+  for (const k of PROP_KEYS) { if (props[k]) { raw = String(props[k]); break; } }
+  if (!raw) return null;
+
+  const n = raw.toLowerCase().trim();
+  // direct key
+  if (REGIONS[raw]) return { data: REGIONS[raw], name: raw };
+
+  // keyword scan
+  for (const [kws, key] of KEYWORD_MAP) {
+    if (kws.some(kw => n.includes(kw))) return { data: REGIONS[key], name: key };
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────
+const map = L.map("map", {
+  center: [12.0, 122.5],
+  zoom: 6,
+  minZoom: 5,
+  maxZoom: 12,
+  zoomControl: true,
+});
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: "abcd",
+  maxZoom: 19,
+}).addTo(map);
+
+// ─────────────────────────────────────────
+// LEGEND
+// ─────────────────────────────────────────
+const legendGrid = document.getElementById("legend-grid");
+for (const [, fam] of Object.entries(FAMILIES)) {
+  const el = document.createElement("div");
+  el.className = "legend-item";
+  el.innerHTML = `<div class="legend-swatch" style="background:${fam.color}"></div><span>${fam.label}</span>`;
+  legendGrid.appendChild(el);
+}
+
+// ─────────────────────────────────────────
+// SIDEBAR UPDATE
+// ─────────────────────────────────────────
+function showRegion(displayName, d) {
+  document.getElementById("placeholder").style.display = "none";
+  const card = document.getElementById("region-card");
+  card.classList.add("active");
+
+  const fam = FAMILIES[d.family];
+  const bg  = fam.color + "22";
+  const bd  = fam.color + "66";
+
+  document.getElementById("card-code").textContent    = d.code;
+  document.getElementById("card-name").textContent    = displayName;
+  document.getElementById("card-primary").textContent = d.primary;
+  document.getElementById("card-dot").style.background = fam.color;
+
+  const badge = document.getElementById("card-badge");
+  badge.style.background   = bg;
+  badge.style.borderColor  = bd;
+
+  document.getElementById("card-langs").innerHTML = d.languages
+    .map(l => `<li><span class="lang-name">${l.name}</span><span class="lang-note">${l.note}</span></li>`)
+    .join("");
+
+  document.getElementById("card-stats").innerHTML = `
+    <div class="stat-box">
+      <div class="stat-value">${d.population}</div>
+      <div class="stat-key">Population</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">${d.langCount}</div>
+      <div class="stat-key">Languages</div>
+    </div>`;
+
+  document.getElementById("card-desc").textContent = d.desc;
+}
+
+// ─────────────────────────────────────────
+// GEOJSON LAYER
+// ─────────────────────────────────────────
+let geojsonLayer;
+let activeLayer = null;
+
+function regionStyle(feature) {
+  const match = matchRegion(feature.properties);
+  const color  = match ? FAMILIES[match.data.family].color : "#374151";
+  return {
+    fillColor:   color,
+    fillOpacity: 0.65,
+    color:       "#0d1117",
+    weight:      1,
+    opacity:     1,
+  };
+}
+
+function regionStyleHover(feature) {
+  const match = matchRegion(feature.properties);
+  const color  = match ? FAMILIES[match.data.family].color : "#374151";
+  return {
+    fillColor:   color,
+    fillOpacity: 0.9,
+    color:       "#ffffff",
+    weight:      2,
+    opacity:     1,
+  };
+}
+
+function onEachFeature(feature, layer) {
+  const match = matchRegion(feature.properties);
+  let displayName = "Unknown Region";
+  for (const k of PROP_KEYS) { if (feature.properties[k]) { displayName = feature.properties[k]; break; } }
+
+  layer.bindTooltip(
+    `<div class="tt-name">${displayName}</div>
+     <div class="tt-lang">${match ? match.data.primary : "No data"}</div>`,
+    { sticky: true, direction: "top" }
+  );
+
+  layer.on({
+    mouseover(e) {
+      if (activeLayer !== e.target) e.target.setStyle(regionStyleHover(feature));
+      e.target.bringToFront();
+    },
+    mouseout(e) {
+      if (activeLayer !== e.target) geojsonLayer.resetStyle(e.target);
+    },
+    click(e) {
+      if (activeLayer) geojsonLayer.resetStyle(activeLayer);
+      activeLayer = e.target;
+      e.target.setStyle(regionStyleHover(feature));
+      e.target.bringToFront();
+      if (match) showRegion(displayName, match.data);
+    },
+  });
+}
+
+// GeoJSON source list (tries each in order)
+const GEOJSON_SOURCES = [
+  "https://raw.githubusercontent.com/faeldon/philippines-json-maps/master/2023/geojson/regions/lowres/regions.0.001.json",
+  "https://raw.githubusercontent.com/faeldon/philippines-json-maps/master/geojson/regions/lowres/regions-10m.json",
+  "https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_PHL_1.json",
+];
+
+async function loadMap() {
+  for (const url of GEOJSON_SOURCES) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const gj = await res.json();
+      geojsonLayer = L.geoJSON(gj, { style: regionStyle, onEachFeature }).addTo(map);
+      map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+      // Debug: log property names from first feature
+      if (gj.features?.[0]) {
+        console.log("GeoJSON loaded from:", url);
+        console.log("Feature properties:", Object.keys(gj.features[0].properties));
+      }
+      return;
+    } catch (err) {
+      console.warn("Failed to load GeoJSON from", url, err);
+    }
+  }
+  // All sources failed
+  document.getElementById("placeholder").innerHTML = `
+    <div class="placeholder-icon">⚠️</div>
+    <p>Could not load map data.</p>
+    <p style="font-size:0.72rem;margin-top:6px;color:#6e7681">
+      Check the browser console for details.<br/>
+      A network connection is required to load the map regions.
+    </p>`;
+}
+
+loadMap();
+</script>
+</body>
+</html>
